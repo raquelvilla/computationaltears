@@ -4,7 +4,7 @@ let collageImages = []; // Array to hold all persistent collage images
 
 let isCrying = false;
 let startTime = 0;
-let emissionRate = 3; // Emit a tear every 3 frames (approx. 20 tears/sec)
+let emissionRate = 10; // Emit a tear every 3 frames (approx. 20 tears/sec)
 
 // --- CONFIGURATION ---
 // IMPORTANT: REPLACE THESE STRINGS WITH THE EXACT NAMES OF YOUR FILES!
@@ -272,4 +272,5 @@ function keyReleased() {
     if (key === ' ' && isCrying) {
         stopCrying();
     }
+
 }
