@@ -4,14 +4,15 @@ let collageImages = []; // Array to hold all persistent collage images
 
 let isCrying = false;
 let startTime = 0;
-let emissionRate = 10; // Emit a tear every 3 frames (approx. 20 tears/sec)
+let emissionRate = 3; // Emit a tear every 3 frames (approx. 20 tears/sec)
 
 // --- CONFIGURATION ---
 // IMPORTANT: REPLACE THESE STRINGS WITH THE EXACT NAMES OF YOUR FILES!
 const TEAR_FILENAMES_A = ['tear1.png', 'tear2.png', 'tear3.png']; 
-const TEAR_FILENAMES_B = ['tear6.png', 'tear7.png', 'tear8.png']; 
+const TEAR_FILENAMES_B = ['tear4.png', 'tear5.png', 'tear6.png']; 
 const SLIDESHOW_FILENAMES = [
-    'slide1.jpg'
+    'slide1.jpg', 'slide2.jpg', 'slide3.jpg', 
+    'slide4.jpg', 'slide5.jpg', 'slide6.png'
 ];
 const SLIDE_DURATION = 3000; // 3 seconds
 
@@ -44,7 +45,8 @@ function setup() {
     angleMode(DEGREES);
     imageMode(CENTER);
     noStroke();
-    colorMode(HSL, 360, 100, 100, 255); // Use HSL for color shifting
+    // Color mode is set to RGB for image display
+    colorMode(RGB, 255, 255, 255, 255); 
 }
 
 // --- TEAR OBJECT CLASS (PHYSICS) ---
@@ -55,16 +57,16 @@ class Tear {
         this.x = x;
         this.y = y;
         this.size = random(160, 260); // EXAGGERATED SIZE
-        this.lifespan = 5 * 60; // 5 seconds * 60 frames/sec = 300 frames
+        this.lifespan = 2.5 * 60; // Reduced to 2.5 seconds for better performance
         this.life = this.lifespan;
         
         // --- Physics Variables ---
-        this.vx = random(-1.5, 1.5); // Stronger initial random horizontal velocity (wind/drift)
-        this.vy = random(-2, 0);   // Initial vertical push (tears fall slightly up initially)
-        this.ay = 0.5; // Constant vertical acceleration (Gravity)
+        this.vx = random(-1.5, 1.5); 
+        this.vy = random(-2, 0); 
+        this.ay = 0.5; // Gravity
         
         // --- Visuals ---
-        this.img = random(activeSet); // Selects a random image object
+        this.img = random(activeSet); // Selects a random loaded p5.Image object
     }
 
     update() {
@@ -79,7 +81,7 @@ class Tear {
         this.life--;
     }
 
-    display(currentHue) {
+    display() {
         // Calculate opacity and scale based on remaining life
         let alpha = map(this.life, 0, this.lifespan, 0, 255); 
         let scaleFactor = map(this.life, 0, this.lifespan, 0.1, 1); 
@@ -87,10 +89,8 @@ class Tear {
         push(); 
         translate(this.x, this.y);
         
-        // Apply Hue Filter and Opacity
-        // NOTE: Tinting works best on images that are originally grayscale/white.
-        let hueValue = (currentHue + this.img.randomOffset) % 360; // Optional offset for image variation
-        tint(hueValue, 80, 50, alpha); // Apply the duration-based color and fade
+        // --- FIX: Keep Original Color (Only apply opacity) ---
+        tint(255, alpha); // Apply full R, G, B color, only reducing alpha (opacity)
 
         // Draw the image onto the canvas
         image(this.img, 0, 0, this.size * scaleFactor, this.size * scaleFactor);
@@ -141,8 +141,8 @@ function draw() {
     
     // 2. Handle Tear Emission
     if (isCrying) {
-        // Drop a new tear every 'emissionRate' frames (for density)
-        if (frameCount % emissionRate === 0) {
+        // Drop a new tear every 10 frames (for density)
+        if (frameCount % 10 === 0) {
             tears.push(new Tear(mouseX, mouseY, activeTearSet));
         }
     }
@@ -154,7 +154,6 @@ function draw() {
     }
     
     // 4. Physics Update & Drawing (Tears)
-    let currentHue = getDurationBasedHue();
     
     for (let i = tears.length - 1; i >= 0; i--) {
         let tear = tears[i];
@@ -162,28 +161,27 @@ function draw() {
         // Run physics and update position
         tear.update(); 
         
-        // Draw the tear with current hue
-        tear.display(currentHue);
+        // Draw the tear
+        tear.display();
         
         // Check Lifespan (Removal)
         if (tear.life <= 0) {
             tears.splice(i, 1); // Remove tear from array
         }
     }
+    
+    // IMPORTANT PERFORMANCE ADJUSTMENT:
+    // If the frame rate drops below 30, increase the emission rate to save CPU
+    if (frameRate() < 30) {
+        emissionRate = 20; // Drastically reduce tear output if lagging
+    } else {
+        emissionRate = 3; // Use the high density rate if stable
+    }
 }
 
 // --- UTILITY AND INTERACTION FUNCTIONS ---
 
-function getDurationBasedHue() {
-    if (!isCrying) return 0;
-    
-    let duration = (millis() - startTime) / 1000; 
-    const hueShiftSpeed = 30; 
-    const hue = (duration * hueShiftSpeed) % 360; 
-    return hue;
-}
-
-// Toggles the active tear set
+// Function to toggle the active tear set
 function toggleTearSet() {
     activeTearSet = (activeTearSet === tearImagesSetA) ? tearImagesSetB : tearImagesSetA;
 }
@@ -197,7 +195,6 @@ function createCollageImage() {
 function startSlideshow() {
     if (slideshowInterval === null) {
         createCollageImage(); 
-        // Drop a new image every SLIDE_DURATION (3000ms)
         slideshowInterval = setInterval(createCollageImage, SLIDE_DURATION); 
     }
 }
@@ -207,7 +204,6 @@ function stopSlideshow() {
         clearInterval(slideshowInterval);
         slideshowInterval = null;
         // Fade out all currently visible images
-        // We'll just remove them instantly on the canvas for simplicity
         collageImages = []; 
     }
 }
@@ -241,10 +237,10 @@ function mousePressed() {
 }
 function mouseReleased() {
     stopCrying();
-    return false;
+    return false; 
 }
 
-// Mobile touch events (p5.js simplifies this, treating touch like mouse)
+// Mobile touch events 
 function touchStarted() {
     startCrying();
     return false;
@@ -253,7 +249,6 @@ function touchEnded() {
     stopCrying();
     return false;
 }
-// Note: mouseX/Y automatically track finger position
 
 // Key events for Spacebar, S, and T
 function keyPressed() {
@@ -272,5 +267,4 @@ function keyReleased() {
     if (key === ' ' && isCrying) {
         stopCrying();
     }
-
 }
